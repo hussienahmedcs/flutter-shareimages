@@ -78,7 +78,7 @@ class _ProfilePageState extends State<ProfilePage>
       });
     });
 
-    Future.delayed(const Duration(milliseconds: 1000 * 7), () {
+    Future.delayed(const Duration(milliseconds: 1000 * 5), () {
       setState(() {
         favs = ["assets/traveltwo.png"];
         favsController!.dispose();
