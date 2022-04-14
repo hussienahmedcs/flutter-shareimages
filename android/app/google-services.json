@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "544319659149",
+    "project_id": "shareimages-b9e75",
+    "storage_bucket": "shareimages-b9e75.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:544319659149:android:f28d530d10c21ab62496c4",
+        "android_client_info": {
+          "package_name": "com.swiftapps.sharewallpaper"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "544319659149-hebj135mkdlha9i6fo1olh9mo41kd07r.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB_IXftpLjvweKlXGrGCRlvFajjsd7Rx0I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "544319659149-hebj135mkdlha9i6fo1olh9mo41kd07r.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
