@@ -10,7 +10,7 @@ import 'firebase_options.dart';
 Widget myApp() {
   return MaterialApp(
     debugShowCheckedModeBanner: false,
-    initialRoute: '/profile',
+    initialRoute: '/',
     routes: {
       '/': (context) => const HomePage(),
       '/upload': (context) => const UploadPage(),

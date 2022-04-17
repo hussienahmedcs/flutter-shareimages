@@ -4,14 +4,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:get/get_rx/src/rx_typedefs/rx_typedefs.dart';
+import 'package:image_downloader/image_downloader.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 
 class Helper {
+  String imagePlaceHolder = "assets/placeholder1.png";
+
   showLoader() {
     EasyLoading.show(status: 'loading...');
   }
 
   hideLoader() {
     EasyLoading.dismiss();
+  }
+
+  downloadFromUrl(url) {
+    return ImageDownloader.downloadImage(url);
   }
 
   Future<Uint8List> compressImage(
@@ -52,7 +60,20 @@ class Helper {
         cb(widget);
       });
     _controller.repeat();
+    // _controller.forward();
     //
     return _controller;
+  }
+
+  showToast(text) {
+    Fluttertoast.showToast(
+      msg: text,
+      toastLength: Toast.LENGTH_SHORT,
+      gravity: ToastGravity.BOTTOM,
+      timeInSecForIosWeb: 1,
+      // backgroundColor: Colors.red,
+      textColor: Colors.white,
+      fontSize: 16.0,
+    );
   }
 }

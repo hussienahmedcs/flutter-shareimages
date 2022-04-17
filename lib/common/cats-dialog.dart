@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:sharewallpaper/util/data-repository.dart';
 import 'package:sharewallpaper/util/pref-mngr.dart';
 
 class CatsDialog extends StatefulWidget {
@@ -9,24 +10,36 @@ class CatsDialog extends StatefulWidget {
 }
 
 class _CatsDialogState extends State<CatsDialog> {
-
   String cat = "";
-  PrefMngr _mngr = new PrefMngr();
-  List<Map<String, String>> cats = [
-    {"title": "Cat1", "value": "CAT1"},
-    {"title": "Cat2", "value": "CAT2"},
-    {"title": "Cat3", "value": "CAT3"},
-  ];
+  final DataRepository repository = DataRepository();
+  final PrefMngr _mngr =  PrefMngr();
+  List<Map<String, String>> cats = [];
 
   @override
-  void initState(){
-    _mngr.getString("Category").then((_cat){
-      print("cat:"+(_cat??"CAT1"));
+  void initState() {
+    repository.fs.collection("cats").get().then((value) {
       setState(() {
-        cat = _cat;
+        cats = [
+          {"label": "Recent", "value": "RECENT"},
+          {"label": "Top Rate", "value": "TOP_RATE"},
+        ];
+        cats.addAll(value.docs
+            .map((e) => e.data())
+            .map((e) => ({
+                  "label": e["name_en"].toString(),
+                  "value": e["id"].toString()
+                }))
+            .toList());
+
+        _mngr.getString("Category").then((_cat) {
+          setState(() {
+            // if (_cat) cat = _cat;
+            cat = _cat;
+          });
+        });
       });
     });
-    // print(cat);
+    super.initState();
   }
 
   @override
@@ -38,19 +51,19 @@ class _CatsDialogState extends State<CatsDialog> {
         mainAxisSize: MainAxisSize.min,
         children: cats
             .map((e) => ListTile(
-          title: Text(e['title'].toString()),
-          leading: Radio(
-            value: e['value'].toString(),
-            groupValue: cat,
-            onChanged: (value) {
-              setState(() {
-                cat = value.toString();
-                print(cat);
-                _mngr.setString("Category", cat);
-              });
-            },
-          ),
-        ))
+                  title: Text(e['label'].toString()),
+                  leading: Radio(
+                    value: e['value'].toString(),
+                    groupValue: cat,
+                    onChanged: (value) {
+                      setState(() {
+                        cat = value.toString();
+                        print(cat);
+                        _mngr.setString("Category", cat);
+                      });
+                    },
+                  ),
+                ))
             .toList(),
       ),
       actions: [],
