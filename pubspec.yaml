@@ -50,6 +50,9 @@ dependencies:
   image_downloader: ^0.31.0
   wc_flutter_share: ^0.4.0
   fluttertoast: ^8.0.9
+  firebase_auth: ^3.3.14
+  firebase_messaging: ^11.2.13
+  audioplayers: any
 #  photo_view: ^0.9.1
 
 dev_dependencies:
@@ -87,6 +90,11 @@ flutter:
     - assets/travelsix.png
     - assets/upload.png
     - assets/placeholder1.png
+    - assets/background.png
+    - assets/clock.png
+    - assets/light-1.png
+    - assets/light-2.png
+    - audio/facebookchat.mp3
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware.
 

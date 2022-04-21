@@ -1,25 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:sharewallpaper/util/helper.dart';
+import 'package:sharewallpaper/util/sound-handler.dart';
 import 'package:wc_flutter_share/wc_flutter_share.dart';
 import 'package:http/http.dart' as http;
 
 class CardGrid extends StatelessWidget {
   final String id;
-  final List likes;
+  final String likes;
+  final bool liked;
   final String logo;
   final VoidCallback? onPress;
   final VoidCallback? onLikePress;
   final String placeholder;
-  final String? deviceId;
 
   CardGrid({
     required this.id,
     required this.likes,
+    required this.liked,
     required this.logo,
     this.onPress,
     this.onLikePress,
     required this.placeholder,
-    required this.deviceId,
   });
 
   final Helper helper = Helper();
@@ -145,13 +146,13 @@ class CardGrid extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  GestureDetector(
+                  SoundClick(
                     onTap: onLikePress,
                     child: Container(
                         height: 40,
                         width: 80,
                         decoration: BoxDecoration(
-                          color: Colors.grey.withOpacity(0.3),
+                          color: Colors.grey.withOpacity(0.7),
                           borderRadius: BorderRadius.all(Radius.circular(20)),
                         ),
                         child: Padding(
@@ -160,18 +161,20 @@ class CardGrid extends StatelessWidget {
                               child: Row(
                             children: <Widget>[
                               Icon(
-                                !likes.contains(deviceId)
-                                    ? Icons.thumb_up_alt_outlined
-                                    : Icons.thumb_up,
+                                liked
+                                    ? Icons.thumb_up
+                                    : Icons.thumb_up_alt_outlined,
                                 color: Colors.blue,
                               ),
                               SizedBox(
                                 width: 10,
                               ),
                               Text(
-                                likes.length.toString(),
+                                likes.toString(),
                                 style: TextStyle(
-                                    fontSize: 15, color: Colors.white),
+                                    fontSize: 15,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold),
                               ),
                             ],
                           )),
@@ -180,10 +183,11 @@ class CardGrid extends StatelessWidget {
                   const Spacer(),
                   Container(
                     decoration: BoxDecoration(
-                        color: Colors.grey.withOpacity(0.5),
+                        color: Colors.grey.withOpacity(0.7),
                         shape: BoxShape.circle),
                     // padding: const EdgeInsets.all(8.0),
                     child: PopupMenuButton(
+                      icon: Icon(Icons.more_vert, color: Colors.white),
                       onSelected: (itemValue) {
                         switch (itemValue) {
                           case 0:

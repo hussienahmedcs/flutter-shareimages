@@ -1,12 +1,17 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:uuid/uuid.dart';
 import 'package:device_info/device_info.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class DataRepository {
   // 1
   final FirebaseFirestore fs = FirebaseFirestore.instance;
   final FirebaseStorage fsStorage = FirebaseStorage.instance;
+  final FirebaseAuth auth = FirebaseAuth.instance;
+  final FirebaseMessaging msg = FirebaseMessaging.instance;
 
   String createId() {
     return const Uuid().v1();

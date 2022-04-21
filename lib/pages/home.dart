@@ -1,9 +1,12 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:convert';
+
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:pull_to_refresh/pull_to_refresh.dart';
 import 'package:sharewallpaper/common/card-grid.dart';
 import 'package:sharewallpaper/common/cats-dialog.dart';
+import 'package:sharewallpaper/common/dialogs.dart';
 import 'package:sharewallpaper/util/SizeConfig.dart';
 import 'package:sharewallpaper/util/data-repository.dart';
 import 'package:sharewallpaper/util/helper.dart';
@@ -18,10 +21,11 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  bool isGrid = false;
   int selectedImageIndex = -1;
   String? cat = "";
-  int numOfCols = 2;
-  String title = "Home";
+  bool isGettingData = false;
+  String title = "Share Wallpaper";
   final PrefMngr _mngr = PrefMngr();
   List imagesList = [];
   final Helper helper = Helper();
@@ -30,127 +34,128 @@ class _HomePageState extends State<HomePage> {
       RefreshController(initialRefresh: false);
   String? deviceId;
   String? reviewImage;
+  final Dialogs dialogs = Dialogs();
 
-  void like(index) async {
-    var obj = imagesList[index];
-    repository.fs.collection("images").doc(obj["id"]).get().then((value) {
-      Map? data = value.data();
-      if (data == null) return;
-      List likes = data["likes"] ?? [];
-      if (likes.contains(deviceId)) {
-        likes = likes.where((element) => element != deviceId).toList();
-      } else {
-        likes.add(deviceId);
+  void listenToLikes() {
+    DataRepository().msg.unsubscribeFromTopic("likesTopic");
+    DataRepository().msg.subscribeToTopic("likesTopic");
+    DataRepository().msg.requestPermission(
+          alert: true,
+          announcement: false,
+          badge: true,
+          carPlay: false,
+          criticalAlert: false,
+          provisional: false,
+          sound: true,
+        );
+    FirebaseMessaging.onMessage.listen((event) {
+      String postId = event.data["post"].toString();
+      String likes = event.data["likes"].toString();
+      int index = imagesList
+          .indexWhere((element) => element["id"].toString() == postId);
+      if (index > -1 && mounted) {
+        setState(() {
+          imagesList[index]["likes"] = likes;
+        });
       }
-      setState(() {
-        imagesList[index]["likes"] = likes;
-
-        repository.fs
-            .collection("images")
-            .doc(obj["id"])
-            .update({"likes": likes, "likesCount": likes.length});
-      });
     });
   }
-  void getImages(Timestamp _time, bool isLoadMore) async {
-    String? catId = await _mngr.getString("Category");
-    if (catId == null) {
-      catId = "RECENT";
-      await _mngr.setString("Category", catId);
-    }
-    String? catName;
-    if (catId == "RECENT") {
-      catName = "Recent";
-    } else if (catId == "TOP_RATE") {
-      catName = "Top Rate";
-    } else {
-      var catData = await repository.fs
-          .collection("cats")
-          .where("id", isEqualTo: catId)
-          .get();
-      catName = catData.docs.first.data()["name_en"];
-    }
-    if (!mounted) return;
-    final bool? _isMine = ModalRoute.of(context)!.settings.arguments as bool?;
-    bool isMine = _isMine ?? false;
 
+  void like(id) async {
+    print("isGettingData:" + isGettingData.toString());
+    if (isGettingData) return;
     setState(() {
-      title = catName! + (isMine ? " - my photos" : "");
+      isGettingData = true;
     });
-    String did = await repository.getDeviceId();
-    deviceId = did;
-
-    var collection = repository.fs.collection("images").limit(10);
-
-    if (catId == "RECENT") {
-      if (imagesList.isEmpty) _time = Timestamp.fromDate(DateTime.now());
-      collection = collection
-          .orderBy("uploadedAt", descending: true)
-          .where("uploadedAt", isLessThan: _time);
-    } else if (catId == "TOP_RATE") {
-      if (imagesList.isEmpty) _time = Timestamp.fromDate(DateTime.now());
-      collection = collection
-              // .startAt(values)
-              .orderBy("likesCount", descending: false)
-              .orderBy("uploadedAt", descending: false)
-              // .where("likesCount", isGreaterThan: -1)
-              // .where("uploadedAt", isLessThan: _time)
-
-
-
-              // .endAt([0])
-          .startAfter([-1,_time])
-
-          // .endAt([0,_time])
-          ;
-      // print(_time.toDate());
-    } else {
-      collection = collection
-          .where("cat_id", isEqualTo: catId)
-          .where("uploadedAt", isGreaterThan: _time);
+    String USER_ID = await helper.getUserId();
+    if (USER_ID == "-1") {
+      dialogs.showLoginAlert(context);
+      return;
     }
-    if (isMine) {
-      collection = collection.where("deviceId", isEqualTo: did);
-    }
-    collection.get().then((value) {
-      var list = value.docs
-          .map((e) => e.data())
-          .map((e) => ({
-                "id": e["image"],
-                "image":
-                    "https://firebasestorage.googleapis.com/v0/b/shareimages-b9e75.appspot.com/o/files%2F${e["image"]}.thumbnail.png?alt=media",
-                "image_full":
-                    "https://firebasestorage.googleapis.com/v0/b/shareimages-b9e75.appspot.com/o/files%2F${e["image"]}.png?alt=media",
-                "uploadedAt": e["uploadedAt"],
-                "likes": e["likes"] ?? []
-              }))
-          .toList();
+    int index =
+        imagesList.indexWhere((element) => element["id"].toString() == id);
+    if (index == -1) return;
+    //--
+    // setState(() {
+    //   int __likes = int.parse(imagesList[index]["likes"]);
+    //   if (imagesList[index]["liked"] == "1") {
+    //     imagesList[index]["liked"] = "0";
+    //     imagesList[index]["likes"] = (__likes - 1).toString();
+    //   } else {
+    //     imagesList[index]["liked"] = "1";
+    //     imagesList[index]["likes"] = (__likes + 1).toString();
+    //   }
+    // });
+    //--
+    helper
+        .postGeneric("like", {"USER_ID": USER_ID, "POST_ID": id}).then((value) {
+      Map response = jsonDecode(value.body);
+      helper.pushNotification(response["count"].toString(), id);
       setState(() {
-        if (!isLoadMore) imagesList = [];
-        print(list.map((x)=>x["uploadedAt"].toDate()));
-        imagesList.addAll(list);
-        print(imagesList.length);
-        if (list.length > 0)
-          _refreshController.loadComplete();
-        else
-          _refreshController.loadNoData();
-        // // _refreshController.resetNoData();
+        imagesList[index]["likes"] = response["count"].toString();
+        imagesList[index]["liked"] = response["liked"].toString();
+        isGettingData = false;
       });
     });
   }
 
   @override
   void initState() {
-    print("done");
-    init(false);
+    if (mounted && !isGettingData) {
+      getData(true);
+    }
+    listenToLikes();
+    super.initState();
   }
 
-  void init(isLoadMore) {
-    getImages(Timestamp.fromDate(DateTime(1971)), isLoadMore);
+  void getData(isNew) async {
+    setState(() {
+      isGettingData = true;
+    });
+    String userId = await helper.getUserId();
+    if (isNew) imagesList = [];
+    String? _cat = await _mngr.getString("Category");
+    if (_cat == null) {
+      await _mngr.setString("Category", "1");
+      _cat = "1";
+    }
+
+    // if (_cat == "1") {
+    int start = imagesList.length;
+    helper.getGeneric("posts/$_cat/$start/10",
+        {"--accept-language": "AR", "USER_ID": userId}).then((value) {
+      if (mounted) {
+        setState(() {
+          isGettingData = false;
+        });
+      }
+      Map<String, dynamic> response = jsonDecode(value.body);
+      List images = response["items"]
+          .map((e) => ({
+                "id": e["id"].toString(),
+                "image":
+                    "https://apex.oracle.com/pls/apex/husseinapps/wallpaper/thumb/${e["image_id"].toString()}",
+                "image_full":
+                    "https://apex.oracle.com/pls/apex/husseinapps/wallpaper/files/${e["image_id"].toString()}",
+                "uploadedAt": e["created_at"],
+                "likes": e["likes"] == null ? "0" : e["likes"].toString(),
+                "liked": e["liked"].toString() == "1" ? "1" : "0"
+              }))
+          .toList();
+      if (mounted)
+        setState(() {
+          imagesList.addAll(images);
+          if (images.length > 0)
+            _refreshController.loadComplete();
+          else
+            _refreshController.loadNoData();
+        });
+    });
   }
 
   void _onLoading() async {
-    getImages(imagesList.last["uploadedAt"], true);
+    print("load more");
+    getData(false);
   }
 
   Future<bool> _onWillPop() async {
@@ -192,44 +197,55 @@ class _HomePageState extends State<HomePage> {
       onWillPop: _onWillPop,
       child: Scaffold(
         appBar: AppBar(
-          title: Text(title),
+          backgroundColor: Colors.blue[600],
+          title: Text(
+            title,
+            style: TextStyle(
+              fontSize: 18,
+            ),
+          ),
           actions: [
-            PopupMenuButton(
-              onSelected: (itemValue) {
-                switch (itemValue) {
-                  case 0:
-                    //select category
-                    showDialog(
-                            context: context,
-                            builder: (ctx) => const CatsDialog())
-                        .then((value) => setState(() {
-                              init(false);
-                            }));
-                    break;
-                  case 1:
-                    //GO TO UPLOAD PAGE
-                    Navigator.pushNamed(context, "/upload");
-                    break;
-                  case 2:
-                    Navigator.pushNamed(context, "/profile");
-                    break;
-                }
-              },
-              itemBuilder: (context) => [
-                const PopupMenuItem(
-                  child: Text("Category"),
-                  value: 0,
-                ),
-                const PopupMenuItem(
-                  child: Text("Upload"),
-                  value: 1,
-                ),
-                const PopupMenuItem(
-                  child: Text("Profile"),
-                  value: 2,
-                ),
-              ],
-            )
+            IconButton(
+                onPressed: () {
+                  showDialog(
+                          context: context,
+                          builder: (ctx) => const CatsDialog())
+                      .then((value) => setState(() {
+                            getData(true);
+                          }));
+                },
+                icon: Icon(Icons.category)),
+            IconButton(
+                onPressed: () {
+                  setState(() {
+                    isGrid = !isGrid;
+                  });
+                },
+                icon: Icon(isGrid ? Icons.apps : Icons.app_registration)),
+            IconButton(
+                onPressed: () async {
+                  String USER_ID = await helper.getUserId();
+                  if (USER_ID == "-1") {
+                    dialogs.showLoginAlert(context);
+                    return;
+                  }
+                  Navigator.pushNamed(context, "/upload").then((value) {
+                    if (value == true) {
+                      getData(true);
+                    }
+                  });
+                },
+                icon: Icon(Icons.cloud_upload_rounded)),
+            IconButton(
+                onPressed: () async {
+                  String USER_ID = await helper.getUserId();
+                  if (USER_ID == "-1") {
+                    dialogs.showLoginAlert(context);
+                    return;
+                  }
+                  Navigator.pushNamed(context, "/profile");
+                },
+                icon: Icon(Icons.person))
           ],
         ),
         body: reviewImage != null
@@ -324,7 +340,7 @@ class _HomePageState extends State<HomePage> {
         child: GridView.builder(
             key: const PageStorageKey("HOME_IMAGES"),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: numOfCols,
+              crossAxisCount: isGrid ? 2 : 1,
             ),
             itemCount: imagesList.length,
             itemBuilder: (BuildContext context, int index) {
@@ -335,38 +351,18 @@ class _HomePageState extends State<HomePage> {
                     selectedImageIndex = index;
                   });
                 },
-                likes: imagesList[index]["likes"] ?? [],
+                likes: imagesList[index]["likes"],
+                liked: imagesList[index]["liked"].toString() == "1",
                 logo: imagesList[index]["image"],
                 onLikePress: () {
-                  like(index);
+                  like(imagesList[index]["id"].toString());
                 },
                 placeholder: helper.imagePlaceHolder,
-                deviceId: deviceId!,
               );
             }),
       ),
     );
   }
-
-// viewer() {
-//   return PhotoViewGallery.builder(
-//     itemCount: imagesList.length,
-//     builder: (context, index) {
-//       return PhotoViewGalleryPageOptions(
-//         imageProvider: NetworkImage(imagesList[index]["image_full"]),
-//         minScale: PhotoViewComputedScale.contained * 0.8,
-//         maxScale: PhotoViewComputedScale.covered * 2,
-//       );
-//     },
-//     scrollPhysics: BouncingScrollPhysics(),
-//     backgroundDecoration: BoxDecoration(
-//       color: Theme.of(context).canvasColor,
-//     ),
-//     loadingChild: Center(
-//       child: CircularProgressIndicator(),
-//     ),
-//   );
-// }
 
   viewer() {
     return Container(
@@ -408,33 +404,4 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
-
-// viewer2() {
-//   return ListView.builder(
-//     physics: const BouncingScrollPhysics(),
-//     shrinkWrap: true,
-//     scrollDirection: Axis.horizontal,
-//     itemCount: imagesList.length,
-//     itemBuilder: (BuildContext context, int index) => Card(
-//       child: Center(
-//         child: InteractiveViewer(
-//           panEnabled: false,
-//           // Set it to false to prevent panning.
-//           boundaryMargin: const EdgeInsets.all(80),
-//           minScale: 1,
-//           maxScale: 10,
-//           child: SizedBox(
-//             width: SizeConfig.widthMultiplier * 99,
-//             height: SizeConfig.heightMultiplier * 99,
-//             child: FadeInImage.assetNetwork(
-//               placeholder: helper.imagePlaceHolder,
-//               image: imagesList[index]["image_full"].toString(),
-//               fit: BoxFit.fitWidth,
-//             ),
-//           ),
-//         ),
-//       ),
-//     ),
-//   );
-// }
 }

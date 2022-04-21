@@ -8,6 +8,7 @@ class PrefMngr {
 
   getString(String key) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    return prefs.getString(key);
+    String? val = prefs.getString(key);
+    return val;
   }
 }

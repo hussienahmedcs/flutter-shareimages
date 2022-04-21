@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:sharewallpaper/util/data-repository.dart';
+import 'package:sharewallpaper/util/helper.dart';
 import 'package:sharewallpaper/util/pref-mngr.dart';
 
 class CatsDialog extends StatefulWidget {
@@ -12,33 +15,35 @@ class CatsDialog extends StatefulWidget {
 class _CatsDialogState extends State<CatsDialog> {
   String cat = "";
   final DataRepository repository = DataRepository();
-  final PrefMngr _mngr =  PrefMngr();
+  final PrefMngr _mngr = PrefMngr();
   List<Map<String, String>> cats = [];
+  final Helper helper = Helper();
+
+  getCats() async {
+    String _cat = await _mngr.getString("Category");
+    setState(() {
+      cat = _cat;
+    });
+    helper.getGeneric("cats", {"--accept-language": "EN"}).then((value) {
+      Map json = jsonDecode(value.body);
+      if (mounted) {
+        setState(() {
+          List ls = json["items"];
+          cats = ls
+              // .where((e) => e["is_dynamic"] == 1)
+              .map((e) => ({
+                    "label": e["name"].toString(),
+                    "value": e["id"].toString()
+                  }))
+              .toList();
+        });
+      }
+    });
+  }
 
   @override
   void initState() {
-    repository.fs.collection("cats").get().then((value) {
-      setState(() {
-        cats = [
-          {"label": "Recent", "value": "RECENT"},
-          {"label": "Top Rate", "value": "TOP_RATE"},
-        ];
-        cats.addAll(value.docs
-            .map((e) => e.data())
-            .map((e) => ({
-                  "label": e["name_en"].toString(),
-                  "value": e["id"].toString()
-                }))
-            .toList());
-
-        _mngr.getString("Category").then((_cat) {
-          setState(() {
-            // if (_cat) cat = _cat;
-            cat = _cat;
-          });
-        });
-      });
-    });
+    getCats();
     super.initState();
   }
 

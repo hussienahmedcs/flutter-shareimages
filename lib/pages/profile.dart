@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:sharewallpaper/pages/home.dart';
@@ -6,6 +8,7 @@ import 'package:sharewallpaper/util/data-repository.dart';
 import 'package:sharewallpaper/util/helper.dart';
 import 'package:pull_to_refresh/pull_to_refresh.dart';
 import 'package:sharewallpaper/util/pref-mngr.dart';
+import 'package:http/http.dart' as http;
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({Key? key}) : super(key: key);
@@ -21,18 +24,65 @@ class _ProfilePageState extends State<ProfilePage>
   Widget _placeHolder = Container();
   Widget _favPlaceHolder = Container();
   final ImageProvider profileImage = const AssetImage("assets/profileimg.png");
-  final String name = "Ahmed Hussein";
-  final String fbUsername = "prog.hussein";
-  final String instaUsername = "husseininsta";
-  final String likesNumber = "3.2K";
-  final String followNumber = "500";
+  String name = "YOUR NAME";
+  String fbUsername = "facebook";
+  String? firstName;
+  String? lastName;
+  String instaUsername = "instagram";
+  String likesNumber = "0";
+  String followNumber = "0";
   final DataRepository repository = DataRepository();
   final PrefMngr _mngr = PrefMngr();
 
   List<String>? favs;
   List<Map<String, dynamic>>? myAlbums;
+  List? cats;
+  List<Map<String, dynamic>>? posts;
+  bool isEditMode = false;
 
-  void getAlbums() {
+  getProfileData() async {
+    String userId = await helper.getUserId();
+    helper
+        .getGeneric("user/$userId", {"--accept-language": "EN"}).then((value) {
+      Map<String, dynamic> map = jsonDecode(value.body);
+      print(map);
+      setState(() {
+        likesNumber = map["likes"].toString();
+        followNumber = helper.numberFormat(map["follow"].toString());
+      });
+    });
+  }
+
+  getPosts() async {
+    String userId = await helper.getUserId();
+    http.Response value = await helper
+        .getGeneric("user-posts/" + userId, {"--accept-language": "EN"});
+    Map json = jsonDecode(value.body);
+    List ls = json["items"];
+    List _ls = ls.toList();
+    List<Map<String, dynamic>> _posts = [];
+    for (var e in _ls) {
+      int index = _posts
+          .indexWhere((p) => p["id"].toString() == e["cat_id"].toString());
+      if (index > -1) {
+        _posts[index]["images"].add(
+            "https://apex.oracle.com/pls/apex/husseinapps/wallpaper/thumb/" +
+                e["image_id"].toString());
+      } else {
+        _posts.add({
+          "id": e["cat_id"].toString(),
+          "name": e["cat_name"].toString(),
+          "images": [
+            "https://apex.oracle.com/pls/apex/husseinapps/wallpaper/thumb/" +
+                e["image_id"].toString()
+          ]
+        });
+      }
+    }
+    return _posts;
+  }
+
+  void getAlbums() async {
     setState(() {
       myAlbums = null;
     });
@@ -44,37 +94,12 @@ class _ProfilePageState extends State<ProfilePage>
       });
     });
 
-    repository.getDeviceId().then((did) {
-      repository.fs
-          .collection("images")
-          .where("deviceId", isEqualTo: did)
-          .get()
-          .then((value) {
-        var data = value.docs.map((e) => e.data()).toList();
-        List cats = data.map((e) => e["cat_id"]).toSet().toList();
-        repository.fs
-            .collection("cats")
-            .where("id", whereIn: cats)
-            .get()
-            .then((catsInfo) {
-          List<Map<String, dynamic>> categories = catsInfo.docs
-              .map((e) => ({
-                    "name": e.data()["name_en"],
-                    "id": e.data()["id"],
-                    "images": data
-                        .where((el) => el["cat_id"] == e.id)
-                        .map((el) =>
-                            "https://firebasestorage.googleapis.com/v0/b/shareimages-b9e75.appspot.com/o/files%2F${el["image"]}.thumbnail.png?alt=media")
-                        .toList()
-                  }))
-              .toList();
-          if (!mounted) return;
-          setState(() {
-            myAlbums = categories;
-            albumController!.dispose();
-          });
-        });
-      });
+    posts = await getPosts();
+
+    if (!mounted) return;
+    setState(() {
+      myAlbums = posts;
+      albumController!.dispose();
     });
   }
 
@@ -104,6 +129,7 @@ class _ProfilePageState extends State<ProfilePage>
   void getData() {
     getAlbums();
     getFavs();
+    getProfileData();
   }
 
   @override
@@ -141,6 +167,28 @@ class _ProfilePageState extends State<ProfilePage>
     _refreshController.loadComplete();
     // _refreshController.loadNoData();
     // _refreshController.resetNoData();
+  }
+
+  editSaveProfile() async {
+    String userId = await helper.getUserId();
+
+    if (isEditMode) {
+      helper.showLoader();
+      Map<String, String> payload = {"fname": firstName!, "lname": lastName!};
+      helper.postGeneric("/user/$userId", payload).then((value) {
+        helper.hideLoader();
+        setState(() {
+          isEditMode = false;
+          firstName = null;
+          lastName = null;
+        });
+        getProfileData();
+      });
+    } else {
+      setState(() {
+        isEditMode = true;
+      });
+    }
   }
 
   @override
@@ -227,13 +275,58 @@ class _ProfilePageState extends State<ProfilePage>
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Text(
-                      name,
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 3 * SizeConfig.textMultiplier,
-                          fontWeight: FontWeight.bold),
-                    ),
+                    isEditMode
+                        ? Row(
+                            children: [
+                              Container(
+                                padding: EdgeInsets.zero,
+                                width: 70,
+                                child: TextFormField(
+                                  keyboardType: TextInputType.number,
+                                  onChanged: (value) => firstName = value,
+                                  decoration: const InputDecoration(
+                                    border: InputBorder.none,
+                                    hintText: "F Name",
+                                    hintStyle: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                              Container(
+                                padding: EdgeInsets.zero,
+                                width: 70,
+                                child: TextFormField(
+                                  keyboardType: TextInputType.number,
+                                  onChanged: (value) => lastName = value,
+                                  decoration: const InputDecoration(
+                                    border: InputBorder.none,
+                                    hintText: "L Name",
+                                    hintStyle: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              )
+                            ],
+                          )
+                        : Text(
+                            name,
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 3 * SizeConfig.textMultiplier,
+                                fontWeight: FontWeight.bold),
+                          ),
                     SizedBox(
                       height: 1 * SizeConfig.heightMultiplier,
                     ),
@@ -249,13 +342,33 @@ class _ProfilePageState extends State<ProfilePage>
                             SizedBox(
                               width: 2 * SizeConfig.widthMultiplier,
                             ),
-                            Text(
-                              fbUsername,
-                              style: TextStyle(
-                                color: Colors.white60,
-                                fontSize: 1.5 * SizeConfig.textMultiplier,
-                              ),
-                            ),
+                            isEditMode
+                                ? Container(
+                                    width: 50,
+                                    child: TextFormField(
+                                      keyboardType: TextInputType.number,
+                                      onChanged: (value) => fbUsername = value,
+                                      decoration: const InputDecoration(
+                                        border: InputBorder.none,
+                                        hintText: "facebook",
+                                        hintStyle: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  )
+                                : Text(
+                                    fbUsername,
+                                    style: TextStyle(
+                                      color: Colors.white60,
+                                      fontSize: 1.5 * SizeConfig.textMultiplier,
+                                    ),
+                                  ),
                           ],
                         ),
                         SizedBox(
@@ -271,13 +384,34 @@ class _ProfilePageState extends State<ProfilePage>
                             SizedBox(
                               width: 2 * SizeConfig.widthMultiplier,
                             ),
-                            Text(
-                              instaUsername,
-                              style: TextStyle(
-                                color: Colors.white60,
-                                fontSize: 1.5 * SizeConfig.textMultiplier,
-                              ),
-                            ),
+                            isEditMode
+                                ? Container(
+                                    width: 50,
+                                    child: TextFormField(
+                                      keyboardType: TextInputType.number,
+                                      onChanged: (value) =>
+                                          instaUsername = value,
+                                      decoration: const InputDecoration(
+                                        border: InputBorder.none,
+                                        hintText: "instagram",
+                                        hintStyle: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  )
+                                : Text(
+                                    instaUsername,
+                                    style: TextStyle(
+                                      color: Colors.white60,
+                                      fontSize: 1.5 * SizeConfig.textMultiplier,
+                                    ),
+                                  ),
                           ],
                         )
                       ],
@@ -335,9 +469,9 @@ class _ProfilePageState extends State<ProfilePage>
                   ),
                   child: FlatButton(
                     padding: const EdgeInsets.all(8.0),
-                    onPressed: null,
+                    onPressed: editSaveProfile,
                     child: Text(
-                      "EDIT PROFILE",
+                      isEditMode ? "Save Info" : "Edit Profile",
                       style: TextStyle(
                           color: Colors.white60,
                           fontSize: 1.8 * SizeConfig.textMultiplier),
@@ -372,7 +506,10 @@ class _ProfilePageState extends State<ProfilePage>
             padding: EdgeInsets.only(
                 left: 30.0, top: 3 * SizeConfig.heightMultiplier),
             child: IconButton(
-                onPressed: () => Navigator.pushNamed(context, "/upload"),
+                onPressed: () =>
+                    Navigator.pushNamed(context, "/upload").then((value) {
+                      if (value == true) getAlbums();
+                    }),
                 icon: Icon(Icons.camera_alt)),
           )
         ],

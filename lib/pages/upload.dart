@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -7,6 +8,7 @@ import 'package:sharewallpaper/util/SizeConfig.dart';
 import 'package:sharewallpaper/util/data-repository.dart';
 import 'package:sharewallpaper/util/helper.dart';
 import 'package:get/get.dart';
+import 'package:sharewallpaper/util/pref-mngr.dart';
 
 class UploadPage extends StatefulWidget {
   const UploadPage({Key? key}) : super(key: key);
@@ -16,71 +18,86 @@ class UploadPage extends StatefulWidget {
 }
 
 class _UploadPageState extends State<UploadPage> {
+  final int MAX_SIZE = 1024 * 1024 * 10; //10MB
+  List<Map<String, dynamic>> cats = [];
   final String _imagePlaceholder = "assets/placeholder1.png";
   Uint8List? bytes;
   final DataRepository repository = DataRepository();
   final Helper helper = Helper();
   bool isAddNew = false;
   String? catNameEn, catNameAr;
+  final PrefMngr _mngr = PrefMngr();
 
   addNewCat() async {
     helper.showLoader();
     String id = await repository.getDeviceId();
-    repository.fs.collection("cats").doc(id).set(
-        {"id": id, "name_en": catNameEn, "name_ar": catNameAr}).then((value) {
+    Map<String, String> payload = {
+      "device_id": id,
+      "name_en": catNameEn!,
+      "name_ar": catNameAr!
+    };
+    helper.postGeneric("cats", payload).then((v) {
+      setState(() {
+        isAddNew = false;
+        var id = (json.decode(v.body) as Map)["NEW_ID"];
+        print(id);
+        _selectedcat = id;
+        cats.add({"label": catNameEn, "value": id});
+      });
       helper.hideLoader();
-      isAddNew = false;
-      getCats();
     });
   }
 
   _upload() async {
-    String id = repository.createId();
-    String deviceId = await repository.getDeviceId();
+    String userId = await helper.getUserId();
+    // String id = repository.createId();
+    // String deviceId = await repository.getDeviceId();
 
     helper.showLoader();
-    repository.fsStorage
-        .ref("files/${id}.png")
-        .putData(bytes!)
-        .whenComplete(() {
-      helper.compressImage(bytes!, 400, 400, 10).then((compressedImage) {
-        repository.fsStorage
-            .ref("files/${id}.thumbnail.png")
-            .putData(compressedImage)
-            .whenComplete(() {
-          var payload = {
-            "image": id,
-            "deviceId": deviceId,
-            "cat_id": _selectedcat,
-            "uploadedAt": Timestamp.now()
-          };
-          repository.fs.collection("images").doc(id).set(payload).then((value) {
-            helper.hideLoader();
-            //back/redirect to profile
-            // String prev = Get.previousRoute;
-            Navigator.pushReplacementNamed(context, "/profile");
-          });
+    // repository.fsStorage
+    //     .ref("files/${id}.png")
+    //     .putData(bytes!)
+    //     .whenComplete(() {
+    helper.compressImage(bytes!, 200, 200, 20).then((compressedImage) {
+      // String img = "iVBORw0KGgoAAAANSUhEUgAAADcAAAA3CAYAAACo29JGAAAABHNCSVQICAgIfAhkiAAAAF96VFh0UmF3IHByb2ZpbGUgdHlwZSBBUFAxAAAImeNKT81LLcpMVigoyk/LzEnlUgADYxMuE0sTS6NEAwMDCwMIMDQwMDYEkkZAtjlUKNEABZiYm6UBoblZspkpiM8FAE+6FWgbLdiMAAAD4klEQVRoge2ZW2gcVRiAvzO7O5u9zCZdk0ooEUHFhDbR2IoJxBZbtIi+pFp9M+iDoi8BxQct6KOggrSiCL7Y4qVIsSBBqCgBrW1atSWWiKGk0SDUpLRxZ/aSzWb3+DDbuZhBqjOSTpjvaec//8z+354z/5zdFeydlqwnMl0zfJC+FUBZ61r+TyK5sBLJhZVILqxEcmElkgsrkVxYieTCSiQXVuK+r2BIqDuOWwUIj7yCBPkPObKZc5UYoHld6NrxJ2dIPhvNo6oKUkrUuGD325fNMWddCw3GXukAKUkkFHa/cQlaHIISqMOxfe0sr0gUIahUGzx64IovQX9yZUnPLWm6b8tYof2zVUaPGJBuFrUseWooyUM7b7ByXpsq89IXJUg1cyqSt/ZkeWCHnTM1XYSK9CXn757TBF9+V3CFdg7kQHcsr5Lk8ftz7pxBDYqOHEOa5zk4drwAWX/L0p9cSjD6keEKbenOQslxf12SbOtzF35HjwbzDjld0tujuXJe+NCwZ/Y/4k9OAEXJb79XXOFXR7JQNRvNPVsT5DckXOPJpMLIcAssS1iS7Hsig3B4zM6VoYp3Y/oX+H8UtAomzrpn78F7c2YXLUmeH855nvbYrhyUJRQlD29vdY2dPGuYHdUn/uXSggOf665Q/2YNFiT82WCgX/M8bVufBlckzEv6t7hzXj+q2w3JB/7l4nDidI3FQs0KqarCM3tTkBHctCllxb+ZWLReb2xXoSvGk8MtJJN2GZcXa0xOrpjPOf+lBUCH4Mw5g11DeSu05z6N27vc99qOwYtIucE6fvcRjZs3qa6cH3/Sod3/rEFQ26+s4Oi4e2ne1aux/W57uf1yvgTA9EzJig32Z9na616SR77WIXM9yamCdz6usLJit/f2vMqdm+3Cx0/pMKQwPmF/CL3dWXN5NlmuNXj/0yVQryc5gBsFkz+7u2YsZhf53EEdNio8e1D3HAeYnDKgMxgxCFIuKxg/ZXgOzc5VzB1JDDCkeezBVycN37sSJ8HJpQQvHvKWO/6DDm3NotsE336ve+a9fKhobqgDIjg5ATRg5tfyqqGnDxfsJpERjHxSWJVz/kLJnNng3AL+spoT5u7CwR8LVZZm6/Y7KcBcnYvzVVfeiTMG5AI0I6jn3FUygv1jOh35OLWaJBYTnD5Xhs6/fYadCu8dXmCgL029LkkkBG+OGYHsSpyIwP8Tb+D+ytOC931UleDsKzkRzDpy/Cce7MyBWWDbNcxAUkAy8HdfVcq6JZILK5FcWInkwkokF1YiubASyYWVdSYnQNatn3PjZLpm1rKcQJH1GInshbUuI8IvfwHDKh8D5rTrqwAAAABJRU5ErkJggg==";
+      String img = helper.uint8ListTob64(bytes!);
+      String thumb = helper.uint8ListTob64(compressedImage);
+      // print(img);
+      // print(img.length);
+      // print(thumb.length);
+      helper.postGeneric("post", {
+        "CAT_ID": _selectedcat.toString(),
+        "IMAGE_DATA": img,
+        "IMAGE_THUMBNAIL": thumb,
+        "USER_ID": userId
+      }).then((value) {
+        print(value.body);
+        helper.hideLoader();
+        _mngr.setString("Category", _selectedcat.toString()).then((value) {
+          Navigator.pop(context,true);
         });
       });
     });
-
-    //start upload details
-    // helper.compressImage(bytes!, 400, 400, 20).then((compressedImage) {
-    //   helper.showLoader();
-    //   var payload = {
-    //     "id": id,
-    //     "image": compressedImage,
-    //     "deviceId": deviceId,
-    //     "cat_id": _selectedcat
-    //   };
-    //   repository.fs.collection("images").doc(id).set(payload).then((value) {
-    //     print("Uploaded");
-    //     helper.hideLoader();
+    //     repository.fsStorage
+    //         .ref("files/${id}.thumbnail.png")
+    //         .putData(compressedImage)
+    //         .whenComplete(() {
+    //       var payload = {
+    //         "image": id,
+    //         "deviceId": deviceId,
+    //         "cat_id": _selectedcat,
+    //         "uploadedAt": Timestamp.now()
+    //       };
+    //       repository.fs.collection("images").doc(id).set(payload).then((value) {
+    //         helper.hideLoader();
+    //         Navigator.pushReplacementNamed(context, "/profile");
+    //       });
+    //     });
     //   });
     // });
   }
 
-  _uploadImage() async {
+  _pickImage() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['jpg', 'png', 'jpeg'],
@@ -90,10 +107,13 @@ class _UploadPageState extends State<UploadPage> {
       if (result != null && result.files.first.path != null) {
         // bytes = result.files.first.bytes;
         String? path = result.files.first.path;
+        print(path);
         File file = File(path!);
-        print(result.files.first.size);
-        if (result.files.first.size > 5120) {
+        int size = result.files.first.size;
+        print(size);
+        if (size > MAX_SIZE) {
           //print file bigger than 5mb
+          helper.showToast("selected file ($size byte) bigger than 5MB");
         } else {
           bytes = file.readAsBytesSync();
         }
@@ -104,18 +124,6 @@ class _UploadPageState extends State<UploadPage> {
     });
   }
 
-  List<Map<String, dynamic>> items = [];
-
-  //   // {"label": "Recent Uploads", "value": "1"},
-  //   // {"label": "Top Rate", "value": "2"},
-  //   {"label": "Nature", "value": "3"},
-  //   {"label": "Quran", "value": "4"},
-  //   {"label": "Desert", "value": "5"},
-  //   {"label": "Girls", "value": "6"},
-  //   {"label": "Babies", "value": "7"},
-  //   {"label": "Persons", "value": "8"},
-  //   {"label": "TEST TEST TEST TEST TEST TEST", "value": "9"},
-  // ];
   var _selectedcat;
 
   @override
@@ -124,12 +132,17 @@ class _UploadPageState extends State<UploadPage> {
   }
 
   getCats() {
-    repository.fs.collection("cats").get().then((value) {
-      setState(() {
-        items = value.docs.map((e) {
-          return {"value": e.data()["id"], "label": e.data()["name_en"]};
-        }).toList();
-      });
+    helper.getGeneric("cats", {"--accept-language": "EN"}).then((value) {
+      Map json = jsonDecode(value.body);
+      if (mounted)
+        setState(() {
+          List ls = json["items"];
+          cats = ls
+              .where((e) => e["is_dynamic"] == 1)
+              .map((e) => ({"label": e["name"], "value": e["id"]}))
+              .toList();
+          // items =  as ;
+        });
     });
   }
 
@@ -276,7 +289,7 @@ class _UploadPageState extends State<UploadPage> {
 
   Widget _imageCard() {
     return GestureDetector(
-      onTap: _uploadImage,
+      onTap: _pickImage,
       child: Padding(
         padding: const EdgeInsets.all(8.0),
         child: Container(
@@ -319,7 +332,7 @@ class _UploadPageState extends State<UploadPage> {
               icon: const Icon(Icons.keyboard_arrow_down),
 
               // Array list of items
-              items: items.map((item) {
+              items: cats.map((item) {
                 return DropdownMenuItem(
                   value: item["value"],
                   child: Text(item["label"].toString()),
