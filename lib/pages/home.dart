@@ -62,7 +62,6 @@ class _HomePageState extends State<HomePage> {
   }
 
   void like(id) async {
-    print("isGettingData:" + isGettingData.toString());
     if (isGettingData) return;
     setState(() {
       isGettingData = true;
@@ -99,6 +98,21 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  void favorite(id) async {
+    String USER_ID = await helper.getUserId();
+    if (USER_ID == "-1") {
+      dialogs.showLoginAlert(context);
+      return;
+    }
+    int index =
+        imagesList.indexWhere((element) => element["id"].toString() == id);
+    if (index == -1) return;
+    helper.postGeneric("favorites/$USER_ID", {"POST_ID": id});
+    setState(() {
+      imagesList[index]["isFav"] = !imagesList[index]["isFav"];
+    });
+  }
+
   @override
   void initState() {
     if (mounted && !isGettingData) {
@@ -120,6 +134,12 @@ class _HomePageState extends State<HomePage> {
       _cat = "1";
     }
 
+    //-----favorites
+    var favRes = await helper.getGeneric("favorites/$userId", {});
+    var favsS = jsonDecode(favRes.body);
+    List fav = favsS["items"].map((e)=>e["post_id"].toString()).toList();
+    //--------------
+
     // if (_cat == "1") {
     int start = imagesList.length;
     helper.getGeneric("posts/$_cat/$start/10",
@@ -139,7 +159,8 @@ class _HomePageState extends State<HomePage> {
                     "https://apex.oracle.com/pls/apex/husseinapps/wallpaper/files/${e["image_id"].toString()}",
                 "uploadedAt": e["created_at"],
                 "likes": e["likes"] == null ? "0" : e["likes"].toString(),
-                "liked": e["liked"].toString() == "1" ? "1" : "0"
+                "liked": e["liked"].toString() == "1" ? "1" : "0",
+                "isFav": fav.contains(e["id"].toString())
               }))
           .toList();
       if (mounted)
@@ -353,9 +374,13 @@ class _HomePageState extends State<HomePage> {
                 },
                 likes: imagesList[index]["likes"],
                 liked: imagesList[index]["liked"].toString() == "1",
+                isFav: imagesList[index]["isFav"] ?? false,
                 logo: imagesList[index]["image"],
                 onLikePress: () {
                   like(imagesList[index]["id"].toString());
+                },
+                onFavPress: () {
+                  favorite(imagesList[index]["id"].toString());
                 },
                 placeholder: helper.imagePlaceHolder,
               );

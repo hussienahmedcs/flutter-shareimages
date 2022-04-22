@@ -8,18 +8,22 @@ class CardGrid extends StatelessWidget {
   final String id;
   final String likes;
   final bool liked;
+  final bool isFav;
   final String logo;
   final VoidCallback? onPress;
   final VoidCallback? onLikePress;
+  final VoidCallback? onFavPress;
   final String placeholder;
 
   CardGrid({
     required this.id,
     required this.likes,
     required this.liked,
+    required this.isFav,
     required this.logo,
     this.onPress,
     this.onLikePress,
+    this.onFavPress,
     required this.placeholder,
   });
 
@@ -34,7 +38,7 @@ class CardGrid extends StatelessWidget {
     String appId = "com.swiftapps.sharewallpaper";
     // Share.shareFiles([logo], text: 'Great picture');
     String url =
-        "https://firebasestorage.googleapis.com/v0/b/shareimages-b9e75.appspot.com/o/files%2F$id.png?alt=media";
+        "https://firebasestorage.googleapis.com/v0/b/shareimages-b9e75.appspot.com/o/files%2F${id}.png?alt=media";
     http.Response response = await http.get(Uri.parse(url));
 
     await WcFlutterShare.share(
@@ -47,77 +51,6 @@ class CardGrid extends StatelessWidget {
       bytesOfFile: response.bodyBytes,
     );
   }
-
-  // Widget _card1() {
-  //   return Padding(
-  //     padding: const EdgeInsets.all(8.0),
-  //     child: GestureDetector(
-  //       onTap: onPress,
-  //       child: Container(
-  //         width: double.infinity,
-  //         height: 500,
-  //         decoration: BoxDecoration(
-  //           image: DecorationImage(
-  //             image:
-  //                 // FadeInImage.assetNetwork(
-  //                 //   placeholder: placeholder,
-  //                 //   image: logo,
-  //                 //   fit: BoxFit.cover,
-  //                 // ).image,
-  //
-  //                 NetworkImage(
-  //               logo,
-  //             ),
-  //             fit: BoxFit.cover,
-  //           ),
-  //           borderRadius: BorderRadius.all(Radius.circular(10)),
-  //         ),
-  //         child: Column(
-  //           mainAxisAlignment: MainAxisAlignment.start,
-  //           crossAxisAlignment: CrossAxisAlignment.start,
-  //           children: <Widget>[
-  //             Expanded(child: SizedBox()),
-  //             // Padding(
-  //             //   padding: const EdgeInsets.only(left: 4.0),
-  //             //   child: Text(title, style: headStyle1),
-  //             // ),
-  //             GestureDetector(
-  //               onTap: onLikePress,
-  //               child: Container(
-  //                   height: 40,
-  //                   width: 80,
-  //                   decoration: BoxDecoration(
-  //                     color: Colors.blue[600],
-  //                     borderRadius: BorderRadius.all(Radius.circular(20)),
-  //                   ),
-  //                   child: Padding(
-  //                     padding: const EdgeInsets.all(8.0),
-  //                     child: Center(
-  //                         child: Row(
-  //                       children: <Widget>[
-  //                         Icon(
-  //                           rating % 2 == 0
-  //                               ? Icons.thumb_up_alt_outlined
-  //                               : Icons.thumb_up,
-  //                           color: Colors.white,
-  //                         ),
-  //                         SizedBox(
-  //                           width: 10,
-  //                         ),
-  //                         Text(
-  //                           rating.toString(),
-  //                           style: TextStyle(fontSize: 15, color: Colors.white),
-  //                         ),
-  //                       ],
-  //                     )),
-  //                   )),
-  //             ),
-  //           ],
-  //         ),
-  //       ),
-  //     ),
-  //   );
-  // }
 
   Widget _card2() {
     return Padding(
@@ -140,10 +73,22 @@ class CardGrid extends StatelessWidget {
             ),
           ),
           Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
             mainAxisSize: MainAxisSize.max,
-            mainAxisAlignment: MainAxisAlignment.end,
+            // mainAxisAlignment: MainAxisAlignment.end,
             children: [
+              FlatButton(
+                onPressed: onFavPress,
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Icon(
+                    isFav ? Icons.favorite : Icons.favorite_border,
+                    color: Colors.blue[600],
+                    size: 36,
+                  ),
+                ),
+              ),
+              Spacer(),
               Row(
                 children: [
                   SoundClick(

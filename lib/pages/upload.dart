@@ -74,7 +74,7 @@ class _UploadPageState extends State<UploadPage> {
         print(value.body);
         helper.hideLoader();
         _mngr.setString("Category", _selectedcat.toString()).then((value) {
-          Navigator.pop(context,true);
+          Navigator.pop(context, true);
         });
       });
     });
@@ -168,8 +168,7 @@ class _UploadPageState extends State<UploadPage> {
                 children: <Widget>[
                   _imageCard(),
                   _catCard(),
-                  isAddNew ? _addNewCard() : Container(),
-                  _btnCard()
+                  isAddNew ? _addNewCard() : _btnCard(),
                 ],
               ),
             ),
@@ -349,12 +348,12 @@ class _UploadPageState extends State<UploadPage> {
           ),
           GestureDetector(
             onTap: () => setState(() {
-              isAddNew = true;
+              isAddNew = !isAddNew;
             }),
             child: Padding(
               padding: const EdgeInsets.all(8.0),
               child: Icon(
-                Icons.add,
+                isAddNew ? Icons.remove : Icons.add,
                 color: Colors.blue[600],
               ),
             ),

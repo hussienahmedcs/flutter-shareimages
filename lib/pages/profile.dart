@@ -57,6 +57,11 @@ class _ProfilePageState extends State<ProfilePage>
     });
   }
 
+  Future<List> getFavIds() async {
+    String? _fav = await _mngr.getString("FAVORITES");
+    return jsonDecode(_fav ?? "[]");
+  }
+
   getPosts() async {
     String userId = await helper.getUserId();
     http.Response value = await helper
@@ -107,8 +112,14 @@ class _ProfilePageState extends State<ProfilePage>
     });
   }
 
-  void getFavs() {
-    //enable to get from database
+  void getFavs() async {
+    // String ids = (await getFavIds()).join(",");
+    // String idsStr = "(" + ids + ")";
+    //
+    // helper.postGeneric("favorites", {"IDS": idsStr},
+    //     headers: {'--accept-language': 'AR'}).then((value) {
+    //   print(value.body);
+    // });
     setState(() {
       favs = null;
     });

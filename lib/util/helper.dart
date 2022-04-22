@@ -34,7 +34,8 @@ class Helper {
     return http.get(Uri.parse(baseUrl + url), headers: headers);
   }
 
-  Future<http.Response> postGeneric(String url, Map<String, String> payload) {
+  Future<http.Response> postGeneric(String url, Map<String, String> payload,
+      {Map<String, String>? headers = null}) {
     print(url);
     print(payload);
     return http.post(Uri.parse(baseUrl + url), body: payload);
@@ -144,4 +145,17 @@ class Helper {
       return (n / 1000000).toString() + "M";
     }
   }
+
+  // handleFav(id) {
+  //   _mngr.getString("FAVORITES").then((_fav) {
+  //     List fav = jsonDecode(_fav ?? "[]");
+  //     if (fav.contains(id)) {
+  //       fav.remove(id);
+  //     } else {
+  //       fav.add(id);
+  //     }
+  //     String favStr = jsonEncode(fav);
+  //     _mngr.setString("FAVORITES", favStr);
+  //   });
+  // }
 }

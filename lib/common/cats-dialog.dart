@@ -20,9 +20,9 @@ class _CatsDialogState extends State<CatsDialog> {
   final Helper helper = Helper();
 
   getCats() async {
-    String _cat = await _mngr.getString("Category");
+    String? _cat = await _mngr.getString("Category");
     setState(() {
-      cat = _cat;
+      cat = _cat ?? "";
     });
     helper.getGeneric("cats", {"--accept-language": "EN"}).then((value) {
       Map json = jsonDecode(value.body);

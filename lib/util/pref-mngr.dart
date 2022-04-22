@@ -6,7 +6,7 @@ class PrefMngr {
     return prefs.setString(key, value);
   }
 
-  getString(String key) async {
+  Future<String?> getString(String key) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? val = prefs.getString(key);
     return val;
