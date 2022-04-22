@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:sharewallpaper/pages/home.dart';
 import 'package:sharewallpaper/util/SizeConfig.dart';
 import 'package:sharewallpaper/util/data-repository.dart';
 import 'package:sharewallpaper/util/helper.dart';
@@ -24,11 +23,10 @@ class _ProfilePageState extends State<ProfilePage>
   Widget _placeHolder = Container();
   Widget _favPlaceHolder = Container();
   final ImageProvider profileImage = const AssetImage("assets/profileimg.png");
-  String name = "YOUR NAME";
-  String fbUsername = "facebook";
+  String? fbUsername = "facebook";
   String? firstName;
   String? lastName;
-  String instaUsername = "instagram";
+  String? instaUsername = "instagram";
   String likesNumber = "0";
   String followNumber = "0";
   final DataRepository repository = DataRepository();
@@ -46,10 +44,16 @@ class _ProfilePageState extends State<ProfilePage>
         .getGeneric("user/$userId", {"--accept-language": "EN"}).then((value) {
       Map<String, dynamic> map = jsonDecode(value.body);
       print(map);
-      setState(() {
-        likesNumber = map["likes"].toString();
-        followNumber = helper.numberFormat(map["follow"].toString());
-      });
+      if (mounted)
+        setState(() {
+          likesNumber = map["likes"].toString();
+          fbUsername = map["fb_username"].toString();
+          instaUsername = map["insta_username"].toString();
+          followNumber = helper.numberFormat(map["follow"].toString());
+          firstName = map["first_name"].toString();
+          lastName = map["last_name"].toString();
+        });
+      helper.hideLoader();
     });
   }
 
@@ -174,13 +178,15 @@ class _ProfilePageState extends State<ProfilePage>
 
     if (isEditMode) {
       helper.showLoader();
-      Map<String, String> payload = {"fname": firstName!, "lname": lastName!};
+      Map<String, String> payload = {};
+      if (firstName != null) payload["fname"] = firstName!;
+      if (lastName != null) payload["lname"] = lastName!;
+      if (fbUsername != null) payload["FB_USERNAME"] = fbUsername!;
+      if (instaUsername != null) payload["INSTA_USERNAME"] = instaUsername!;
       helper.postGeneric("/user/$userId", payload).then((value) {
         helper.hideLoader();
         setState(() {
           isEditMode = false;
-          firstName = null;
-          lastName = null;
         });
         getProfileData();
       });
@@ -282,6 +288,7 @@ class _ProfilePageState extends State<ProfilePage>
                                 padding: EdgeInsets.zero,
                                 width: 70,
                                 child: TextFormField(
+                                  initialValue: firstName,
                                   keyboardType: TextInputType.number,
                                   onChanged: (value) => firstName = value,
                                   decoration: const InputDecoration(
@@ -302,7 +309,8 @@ class _ProfilePageState extends State<ProfilePage>
                                 padding: EdgeInsets.zero,
                                 width: 70,
                                 child: TextFormField(
-                                  keyboardType: TextInputType.number,
+                                  initialValue: lastName,
+                                  // keyboardType: TextInputType.number,
                                   onChanged: (value) => lastName = value,
                                   decoration: const InputDecoration(
                                     border: InputBorder.none,
@@ -321,7 +329,7 @@ class _ProfilePageState extends State<ProfilePage>
                             ],
                           )
                         : Text(
-                            name,
+                            (firstName ?? "") + " " + (lastName ?? ""),
                             style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 3 * SizeConfig.textMultiplier,
@@ -346,7 +354,8 @@ class _ProfilePageState extends State<ProfilePage>
                                 ? Container(
                                     width: 50,
                                     child: TextFormField(
-                                      keyboardType: TextInputType.number,
+                                      initialValue: fbUsername,
+                                      // keyboardType: TextInputType.number,
                                       onChanged: (value) => fbUsername = value,
                                       decoration: const InputDecoration(
                                         border: InputBorder.none,
@@ -363,7 +372,7 @@ class _ProfilePageState extends State<ProfilePage>
                                     ),
                                   )
                                 : Text(
-                                    fbUsername,
+                                    fbUsername ?? "Facebook",
                                     style: TextStyle(
                                       color: Colors.white60,
                                       fontSize: 1.5 * SizeConfig.textMultiplier,
@@ -388,7 +397,8 @@ class _ProfilePageState extends State<ProfilePage>
                                 ? Container(
                                     width: 50,
                                     child: TextFormField(
-                                      keyboardType: TextInputType.number,
+                                      initialValue: instaUsername,
+                                      // keyboardType: TextInputType.number,
                                       onChanged: (value) =>
                                           instaUsername = value,
                                       decoration: const InputDecoration(
@@ -406,7 +416,7 @@ class _ProfilePageState extends State<ProfilePage>
                                     ),
                                   )
                                 : Text(
-                                    instaUsername,
+                                    instaUsername ?? "Instagram",
                                     style: TextStyle(
                                       color: Colors.white60,
                                       fontSize: 1.5 * SizeConfig.textMultiplier,
