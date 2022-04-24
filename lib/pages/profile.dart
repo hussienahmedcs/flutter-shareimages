@@ -32,7 +32,7 @@ class _ProfilePageState extends State<ProfilePage>
   final DataRepository repository = DataRepository();
   final PrefMngr _mngr = PrefMngr();
 
-  List<String>? favs;
+  List<dynamic>? favs;
   List<Map<String, dynamic>>? myAlbums;
   List? cats;
   List<Map<String, dynamic>>? posts;
@@ -113,13 +113,6 @@ class _ProfilePageState extends State<ProfilePage>
   }
 
   void getFavs() async {
-    // String ids = (await getFavIds()).join(",");
-    // String idsStr = "(" + ids + ")";
-    //
-    // helper.postGeneric("favorites", {"IDS": idsStr},
-    //     headers: {'--accept-language': 'AR'}).then((value) {
-    //   print(value.body);
-    // });
     setState(() {
       favs = null;
     });
@@ -131,14 +124,17 @@ class _ProfilePageState extends State<ProfilePage>
         _favPlaceHolder = placeholder;
       });
     });
-    //
-    // Future.delayed(const Duration(milliseconds: 1000 * 5), () {
-    //   if (!mounted) return;
-    //   setState(() {
-    favs = ["assets/traveltwo.png"];
-    //   });
+
+    String userId = await helper.getUserId();
+    http.Response value = await helper
+        .getGeneric("user-fav/" + userId, {"--accept-language": "EN"});
+    var obj = jsonDecode(value.body);
+    favs = obj["items"]
+        .map((e) =>
+            "https://apex.oracle.com/pls/apex/husseinapps/wallpaper/thumb/" +
+            e["image_id"].toString())
+        .toList();
     favsController!.dispose();
-    // });
   }
 
   void getData() {
@@ -776,14 +772,14 @@ class _ProfilePageState extends State<ProfilePage>
     return Padding(
       padding: const EdgeInsets.only(left: 40.0),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(15.0),
-        child: Image.asset(
-          s,
-          height: 20 * SizeConfig.heightMultiplier,
-          width: 70 * SizeConfig.widthMultiplier,
-          fit: BoxFit.cover,
-        ),
-      ),
+          borderRadius: BorderRadius.circular(15.0),
+          child: FadeInImage.assetNetwork(
+            placeholder: helper.imagePlaceHolder,
+            image: s,
+            height: 20 * SizeConfig.heightMultiplier,
+            width: 70 * SizeConfig.widthMultiplier,
+            fit: BoxFit.cover,
+          )),
     );
   }
 }
