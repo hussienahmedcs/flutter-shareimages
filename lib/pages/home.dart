@@ -137,7 +137,7 @@ class _HomePageState extends State<HomePage> {
     //-----favorites
     var favRes = await helper.getGeneric("favorites/$userId", {});
     var favsS = jsonDecode(favRes.body);
-    List fav = favsS["items"].map((e)=>e["post_id"].toString()).toList();
+    List fav = favsS["items"].map((e) => e["post_id"].toString()).toList();
     //--------------
 
     // if (_cat == "1") {
@@ -232,7 +232,8 @@ class _HomePageState extends State<HomePage> {
                           context: context,
                           builder: (ctx) => const CatsDialog())
                       .then((value) => setState(() {
-                            getData(true);
+                            print(value);
+                            if (value == true) getData(true);
                           }));
                 },
                 icon: Icon(Icons.category)),

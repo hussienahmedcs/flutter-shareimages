@@ -10,6 +10,7 @@ import 'package:get/get_rx/src/rx_typedefs/rx_typedefs.dart';
 import 'package:image_downloader/image_downloader.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:http/http.dart' as http;
+import 'package:sharewallpaper/models/animate-controller.dart';
 import 'package:sharewallpaper/util/data-repository.dart';
 import 'package:sharewallpaper/util/pref-mngr.dart';
 
@@ -71,6 +72,27 @@ class Helper {
     return header + base64String;
   }
 
+  AnimateControl fadeInOut(TickerProviderStateMixin mThis,{int seconds=3,int delay=0,double begin=0.0,double end=0.5}){
+    AnimationController animation;
+    Animation<double> _fadeInFadeOut;
+    animation = AnimationController(vsync: mThis, duration: Duration(seconds: seconds),);
+    _fadeInFadeOut = Tween<double>(begin: begin, end: end).animate(animation);
+
+    animation.addStatusListener((status){
+      if(status == AnimationStatus.completed){
+        animation.reverse();
+      }
+      else if(status == AnimationStatus.dismissed){
+        animation.forward();
+      }
+    });
+    Future.delayed(Duration(seconds: delay),(){
+      animation.forward();
+    });
+
+
+    return AnimateControl(animation: animation, fadeInOut: _fadeInFadeOut);
+  }
   AnimationController initPlaceholder(TickerProviderStateMixin mThis,
       double width, double height, Function cb) {
     AnimationController? _controller;

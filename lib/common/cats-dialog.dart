@@ -32,7 +32,10 @@ class _CatsDialogState extends State<CatsDialog> {
           cats = ls
               // .where((e) => e["is_dynamic"] == 1)
               .map((e) => ({
-                    "label": e["name"].toString(),
+                    "label": e["name"].toString() +( e["is_dynamic"].toString() == "1"?
+                        " (" +
+                        e["posts_num"].toString() +
+                        ")":""),
                     "value": e["id"].toString()
                   }))
               .toList();
@@ -63,8 +66,9 @@ class _CatsDialogState extends State<CatsDialog> {
                     onChanged: (value) {
                       setState(() {
                         cat = value.toString();
-                        print(cat);
-                        _mngr.setString("Category", cat);
+                        _mngr.setString("Category", cat).then((value) {
+                          Navigator.pop(context,true);
+                        });
                       });
                     },
                   ),

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:sharewallpaper/models/animate-controller.dart';
 import 'package:sharewallpaper/util/data-repository.dart';
 import 'package:sharewallpaper/util/helper.dart';
 
@@ -10,10 +11,12 @@ class Login extends StatefulWidget {
   _LoginState createState() => _LoginState();
 }
 
-class _LoginState extends State<Login> {
+class _LoginState extends State<Login> with TickerProviderStateMixin {
+  final Helper helper = Helper();
+  AnimateControl? mAnimateControl1, mAnimateControl2;
+
   String? phoneNumber;
   final DataRepository repository = DataRepository();
-  final Helper helper = Helper();
   PhoneAuthCredential? _credential;
   String? _verificationId;
   int? _resendToken;
@@ -26,6 +29,7 @@ class _LoginState extends State<Login> {
     } else {
       helper.showToast(e.message);
     }
+    print(e);
   }
 
   _verificationCompleted(PhoneAuthCredential credential) {
@@ -172,8 +176,11 @@ class _LoginState extends State<Login> {
   }
 
   sendOtp() {
-    if (phoneNumber == null) return;
-    verifyPhoneNumber();
+    if (phoneNumber == null) {
+      helper.showToast("please enter phone number");
+      return;
+    }
+      verifyPhoneNumber();
   }
 
   Future<bool> loginOrSignUp() async {
@@ -182,7 +189,7 @@ class _LoginState extends State<Login> {
     String did = await repository.getDeviceId();
     helper.postGeneric("/login", {"phone": phoneNumber!, "device": did}).then(
         (value) {
-          helper.setUserId(value.body);
+      helper.setUserId(value.body);
       completer.complete(true);
       helper.hideLoader();
     });
@@ -198,8 +205,8 @@ class _LoginState extends State<Login> {
   }
 
   login() async {
-    // sendOtp();
-    doLogin();
+    sendOtp();
+    // doLogin();
   }
 
   doCreate() {
@@ -221,6 +228,19 @@ class _LoginState extends State<Login> {
     // TODO: implement initState
     super.initState();
     // openOtpDialog();
+    mAnimateControl1 = helper.fadeInOut(this, seconds: 2, begin: 0.1, end: 0.7);
+
+    mAnimateControl2 =
+        helper.fadeInOut(this, seconds: 2, delay: 2, begin: 0.1, end: 0.7);
+  }
+
+  @override
+  void dispose() {
+    // TODO: implement dispose
+
+    mAnimateControl1!.animation.dispose();
+    mAnimateControl2!.animation.dispose();
+    super.dispose();
   }
 
   @override
@@ -242,19 +262,25 @@ class _LoginState extends State<Login> {
                         left: 30,
                         width: 80,
                         height: 200,
-                        child: Container(
-                          decoration: BoxDecoration(
-                              image: DecorationImage(
-                                  image: AssetImage('assets/light-1.png'))),
+                        child: FadeTransition(
+                          opacity: mAnimateControl1!.fadeInOut,
+                          child: Container(
+                            decoration: BoxDecoration(
+                                image: DecorationImage(
+                                    image: AssetImage('assets/light-1.png'))),
+                          ),
                         )),
                     Positioned(
                       left: 140,
                       width: 80,
                       height: 150,
-                      child: Container(
-                        decoration: BoxDecoration(
-                            image: DecorationImage(
-                                image: AssetImage('assets/light-2.png'))),
+                      child: FadeTransition(
+                        opacity: mAnimateControl2!.fadeInOut,
+                        child: Container(
+                          decoration: BoxDecoration(
+                              image: DecorationImage(
+                                  image: AssetImage('assets/light-2.png'))),
+                        ),
                       ),
                     ),
                     Positioned(
@@ -313,7 +339,7 @@ class _LoginState extends State<Login> {
                               onChanged: (value) => phoneNumber = value,
                               decoration: InputDecoration(
                                   border: InputBorder.none,
-                                  hintText: "Phone number",
+                                  hintText: "+xx xxx xxxx xx",
                                   hintStyle:
                                       TextStyle(color: Colors.grey[400])),
                             ),

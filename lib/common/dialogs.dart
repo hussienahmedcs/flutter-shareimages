@@ -20,6 +20,7 @@ class Dialogs {
         ],
       ),
     ).then((value){
+      print(value);
       if(value) {
         Navigator.pushNamed(context, "/login");
       }

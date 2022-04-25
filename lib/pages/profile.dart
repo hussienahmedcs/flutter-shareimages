@@ -1,5 +1,8 @@
 import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:sharewallpaper/util/SizeConfig.dart';
@@ -22,7 +25,7 @@ class _ProfilePageState extends State<ProfilePage>
   AnimationController? albumController, favsController;
   Widget _placeHolder = Container();
   Widget _favPlaceHolder = Container();
-  final ImageProvider profileImage = const AssetImage("assets/profileimg.png");
+  String? imageUrl;
   String? fbUsername = "facebook";
   String? firstName;
   String? lastName;
@@ -38,6 +41,42 @@ class _ProfilePageState extends State<ProfilePage>
   List<Map<String, dynamic>>? posts;
   bool isEditMode = false;
 
+  _uploadProfile() async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['jpg', 'png', 'jpeg'],
+    );
+
+    if (result != null && result.files.first.path != null) {
+      // bytes = result.files.first.bytes;
+      String? path = result.files.first.path;
+      print(path);
+      File file = File(path!);
+      int size = result.files.first.size;
+      print(size);
+      // if (size > MAX_SIZE) {
+      //   //print file bigger than 5mb
+      //   helper.showToast("selected file ($size byte) bigger than 5MB");
+      // } else {
+      Uint8List bytes = file.readAsBytesSync();
+      // }
+      file.delete();
+      String userId = await helper.getUserId();
+
+      helper.compressImage(bytes, 200, 200, 20).then((compressedImage) {
+        String img = helper.uint8ListTob64(bytes);
+        String thumb = helper.uint8ListTob64(compressedImage);
+        helper.showLoader();
+        helper.postGeneric("/user/$userId",
+            {"IMAGE_DATA": thumb, "IMAGE_THUMBNAIL": thumb}).then((value) {
+          print(value.body);
+          helper.hideLoader();
+          getProfileData();
+        });
+      });
+    }
+  }
+
   getProfileData() async {
     String userId = await helper.getUserId();
     helper
@@ -52,6 +91,9 @@ class _ProfilePageState extends State<ProfilePage>
           followNumber = helper.numberFormat(map["follow"].toString());
           firstName = map["first_name"].toString();
           lastName = map["last_name"].toString();
+          imageUrl =
+              "https://apex.oracle.com/pls/apex/husseinapps/wallpaper/thumb/" +
+                  map["profile_image_id"].toString();
         });
       helper.hideLoader();
     });
@@ -274,13 +316,21 @@ class _ProfilePageState extends State<ProfilePage>
           children: <Widget>[
             Row(
               children: <Widget>[
-                Container(
-                  height: 11 * SizeConfig.heightMultiplier,
-                  width: 22 * SizeConfig.widthMultiplier,
-                  decoration: BoxDecoration(
+                GestureDetector(
+                  onTap: _uploadProfile,
+                  child: Container(
+                    height: 11 * SizeConfig.heightMultiplier,
+                    width: 22 * SizeConfig.widthMultiplier,
+                    decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       image: DecorationImage(
-                          fit: BoxFit.cover, image: profileImage)),
+                        fit: BoxFit.cover,
+                        image: imageUrl == null
+                            ? const AssetImage("assets/profileimg.png")
+                            : Image.network(imageUrl!).image,
+                      ),
+                    ),
+                  ),
                 ),
                 SizedBox(
                   width: 5 * SizeConfig.widthMultiplier,
